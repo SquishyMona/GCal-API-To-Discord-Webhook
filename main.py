@@ -46,18 +46,18 @@ def on_request_example(req: https_fn.Request) -> https_fn.Response:
 
     # These lines aren't needed, but can be used to run multiple webhooks from this same function. In my case, I have 3
     # webhooks set up, and since all messages will look the same, just with different info, this approach works great.
-    if req.headers.get('x-goog-resource-id') == os.getenv('ACAPELLA_RESOURCEID'):
-        calendarId = os.getenv('ACAPELLA_CAL_ID')
-        webhookurl = os.getenv('ACAPELLA_WEBHOOK')
-        token = 'acapella'
-    if req.headers.get('x-goog-resource-id') == os.getenv('SLIH_REH_RESOURCEID'):
-        calendarId = os.getenv('SLIH_REH_CAL_ID')
-        webhookurl = os.getenv('SLIH_REH_WEBHOOK')
-        token = 'slih_reh'
-    if req.headers.get('x-goog-resource-id') == os.getenv('SLIH_GIGS_RESOURCEID'):
-        calendarId = os.getenv('SLIH_GIGS_CAL_ID')
-        webhookurl = os.getenv('SLIH_GIGS_WEBHOOK')
-        token = 'slih_gigs'
+    if req.headers.get('x-goog-resource-id') == os.getenv('FIRST_RESOURCEID'):
+        calendarId = os.getenv('FIRST_CAL_ID')
+        webhookurl = os.getenv('FIRST_WEBHOOK')
+        token = 'first'
+    if req.headers.get('x-goog-resource-id') == os.getenv('SECOND_RESOURCEID'):
+        calendarId = os.getenv('SECOND_CAL_ID')
+        webhookurl = os.getenv('SECOND_WEBHOOK')
+        token = 'second'
+    if req.headers.get('x-goog-resource-id') == os.getenv('THIRD_RESOURCEID'):
+        calendarId = os.getenv('THIRD_CAL_ID')
+        webhookurl = os.getenv('THIRD_WEBHOOK')
+        token = 'third'
     
     # When we get a sync notification, we'll need to get new sync tokens to use in our subsequent requests. The sync
     # tokens are used to make sure when we run the 'list' request, we only get the events that have changed since the
@@ -67,10 +67,13 @@ def on_request_example(req: https_fn.Request) -> https_fn.Response:
     if req.headers.get('x-goog-resource-state') == 'sync':
         with open('synctoken.json') as json_file:
             nextSyncToken = json.load(json_file)
+
         print(f"Sync event received, channel started for id {req.headers.get('x-goog-resource-id')}")
+
         events_result = service.events().list(calendarId=calendarId).execute()
         nextSyncToken[token] = events_result['nextSyncToken']
         print(f'The next sync token is {events_result["nextSyncToken"]} for calendar {token}')
+
         with open('synctoken.json', 'w') as outfile:
             json.dump(nextSyncToken, outfile)
         return https_fn.Response("Sync event received")
@@ -78,6 +81,7 @@ def on_request_example(req: https_fn.Request) -> https_fn.Response:
     # If the event is not a sync notification, something has changed on one of our calendars.
     else:
         print("Changes detected.")
+        
         with open('synctoken.json') as json_file:
             nextSyncToken = json.load(json_file)
         events_result = service.events().list(calendarId=calendarId, syncToken=nextSyncToken[token]).execute()
@@ -86,8 +90,8 @@ def on_request_example(req: https_fn.Request) -> https_fn.Response:
         print(f'The next sync token is {events_result["nextSyncToken"]} for calendar {token}')
         with open('synctoken.json', 'w') as outfile:
             json.dump(nextSyncToken, outfile)
-        events = events_result.get('items', [])
 
+        events = events_result.get('items', [])
         for event in events:
             # If an event has 'confirmed' status, we need to check if it's a new event, or an existing event that's
             # been updated. In this case, we'll check the 'created' and 'updated' fields to see if they're the same.
